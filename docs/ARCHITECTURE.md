@@ -72,6 +72,15 @@ for an authorized-data-source provider later without touching
 journey-engine or the API routes — swap the provider, nothing else
 changes. **Do not build a scraping provider** — see CLAUDE.md.
 
+Live seat availability (booking viability) is layered on top of
+`SeedDataProvider`'s static schedule via a separate RailRadar client
+(`apps/api/src/infrastructure/railradar.ts`, free tier, see CLAUDE.md
+2026-09-25 decision) — schedules/routes stay seed data, only
+availability status is live. `getAvailabilitySignal` is `async` for
+this reason: it may make a real HTTP call, unlike the rest of
+journey-engine's zero-I/O internals (it still does no I/O itself — it
+only awaits a caller-supplied function).
+
 ## Deployment (when ready)
 Docker Compose locally for dev. For a free public deploy later:
 frontend on Vercel free tier, API on a free-tier host (Render/Fly.io
