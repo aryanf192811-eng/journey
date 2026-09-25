@@ -25,9 +25,9 @@ export function JourneyCard({ journey, searchId, rank }: { journey: Journey; sea
       href={`/results/${searchId}/${rank}`}
       className="block bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm hover:shadow-md transition-shadow"
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-semibold text-lg">{route.join(' → ')}</span>
-        <span className="text-lg font-semibold">₹{journey.totalFareEstimate}</span>
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+        <span className="font-semibold text-lg break-words">{route.join(' → ')}</span>
+        <span className="text-lg font-semibold shrink-0">₹{journey.totalFareEstimate}</span>
       </div>
       <div className="text-sm text-neutral-600 mb-3">
         {formatDuration(journey.totalDurationMinutes)} · {journey.transferCount} transfer{journey.transferCount !== 1 ? 's' : ''}
