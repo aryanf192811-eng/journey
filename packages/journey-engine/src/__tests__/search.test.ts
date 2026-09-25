@@ -33,8 +33,8 @@ describe('searchJourneys', () => {
     { trainNumber: '12556', classCode: '3A', baseFare: 870 },
   ];
 
-  it('finds the comfortable 1-transfer journey and rejects the broken one', () => {
-    const journeys = searchJourneys({
+  it('finds the comfortable 1-transfer journey and rejects the broken one', async () => {
+    const journeys = await searchJourneys({
       originStationCode: 'BRC',
       destinationStationCode: 'MFP',
       dateFrom: new Date('2026-11-16T00:00:00'),
@@ -70,8 +70,8 @@ describe('searchJourneys', () => {
     expect(comfortable!.bookingViability).toBe('unknown'); // no availability data supplied
   });
 
-  it('respects budget constraint', () => {
-    const journeys = searchJourneys({
+  it('respects budget constraint', async () => {
+    const journeys = await searchJourneys({
       originStationCode: 'BRC',
       destinationStationCode: 'MFP',
       dateFrom: new Date('2026-11-16T00:00:00'),
