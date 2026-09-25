@@ -33,16 +33,26 @@ export interface SearchInput {
    * dateFrom. Bounds the search space; default MAX_JOURNEY_DAYS below. */
   maxJourneyDays?: number;
   /** Looked up per candidate leg by caller-supplied fn — keeps this
-   * package free of DB access (see docs/ARCHITECTURE.md). */
-  getAvailabilitySignal: (trainNumber: string, classCode: string) => LegAvailabilitySignal;
+   * package free of I/O itself (see docs/ARCHITECTURE.md). May be async
+   * (e.g. a live RailRadar lookup) or sync (e.g. always-unknown) — awaited
+   * either way. */
+  getAvailabilitySignal: (leg: {
+    trainNumber: string;
+    classCode: string;
+    fromStationCode: string;
+    toStationCode: string;
+    departureDate: Date;
+  }) => LegAvailabilitySignal | Promise<LegAvailabilitySignal>;
 }
 
 const MAX_JOURNEY_DAYS = 4; // reasonable ceiling for an Indian long-distance journey incl. transfers
 
 /** Runs the full deterministic pipeline: build graph -> find paths ->
  * validate connections -> assemble journeys -> Pareto-filter -> rank.
- * This is the one function apps/api should call for a search request. */
-export function searchJourneys(input: SearchInput): Journey[] {
+ * This is the one function apps/api should call for a search request.
+ * Async only because getAvailabilitySignal may be (see SearchInput) —
+ * the pipeline itself still does zero I/O. */
+export async function searchJourneys(input: SearchInput): Promise<Journey[]> {
   const constraints: SearchConstraints = {
     budgetMax: input.budgetMax,
     classes: input.classes,
@@ -79,8 +89,16 @@ export function searchJourneys(input: SearchInput): Journey[] {
 
   const journeys: Journey[] = [];
   for (const candidate of candidates) {
-    const signals = candidate.edges.map((e) =>
-      input.getAvailabilitySignal(e.trainNumber, e.classCode)
+    const signals = await Promise.all(
+      candidate.edges.map((e) =>
+        input.getAvailabilitySignal({
+          trainNumber: e.trainNumber,
+          classCode: e.classCode,
+          fromStationCode: e.fromStationCode,
+          toStationCode: e.toStationCode,
+          departureDate: e.departure,
+        })
+      )
     );
     const journey = assembleJourney(candidate, constraints, signals);
     if (journey) journeys.push(journey);
