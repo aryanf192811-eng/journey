@@ -1,6 +1,6 @@
 // apps/web/app/lib/api.ts
 
-import { SearchResponse } from './types';
+import { SearchResponse, Journey, ExpandedStation } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -29,7 +29,11 @@ export async function searchJourneys(params: SearchParams): Promise<SearchRespon
   return res.json();
 }
 
-export async function fetchSearchResults(searchId: string): Promise<{ journeys: any[] }> {
+export async function fetchSearchResults(searchId: string): Promise<{
+  journeys: Journey[];
+  expandedOrigins?: ExpandedStation[];
+  expandedDestinations?: ExpandedStation[];
+}> {
   const res = await fetch(`${API_BASE}/api/journeys/search/${searchId}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Search not found');
   return res.json();
