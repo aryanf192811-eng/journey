@@ -3,9 +3,13 @@
 // so these run against a real Fastify instance with no mocking needed.
 // computeExtraTravelMinutes is a pure helper, tested directly.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import { journeyRoutes, computeExtraTravelMinutes } from './journeys';
+import { query } from '../infrastructure/db';
+
+vi.mock('../infrastructure/db', () => ({ query: vi.fn() }));
+const mockQuery = vi.mocked(query);
 
 describe('computeExtraTravelMinutes', () => {
   it('estimates minutes from distance at the assumed 30km/h last-mile speed', () => {
@@ -56,5 +60,47 @@ describe('POST /api/journeys/search validation', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().field).toBe('classes');
+  });
+});
+
+describe('GET /api/journeys/search/:searchId', () => {
+  async function buildApp() {
+    const app = Fastify();
+    await app.register(journeyRoutes);
+    return app;
+  }
+
+  it('returns 200 with an empty journeys list when the search exists but found nothing (not a 404)', async () => {
+    mockQuery
+      .mockResolvedValueOnce([{ expanded_origins: null, expanded_destinations: null }]) // searches lookup
+      .mockResolvedValueOnce([]); // search_results lookup — legitimately empty
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/api/journeys/search/1' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().journeys).toEqual([]);
+  });
+
+  it('returns 404 only when the search itself does not exist', async () => {
+    mockQuery.mockResolvedValueOnce([]); // no matching searches row
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/api/journeys/search/999' });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns persisted expansion data alongside journeys', async () => {
+    const expandedDestinations = [{ stationCode: 'ADI', extraTravelMinutes: 40 }];
+    mockQuery
+      .mockResolvedValueOnce([{ expanded_origins: null, expanded_destinations: expandedDestinations }])
+      .mockResolvedValueOnce([{ journey_json: { totalFareEstimate: 900 } }]);
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/api/journeys/search/1' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().expandedDestinations).toEqual(expandedDestinations);
   });
 });
