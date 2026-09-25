@@ -3,6 +3,7 @@
 // journey-engine (which does zero I/O itself — see ARCHITECTURE.md).
 
 import { query } from '../infrastructure/db';
+import { fetchSeatAvailability } from '../infrastructure/railradar';
 import {
   searchJourneys,
   RawTrainStop,
@@ -35,15 +36,22 @@ export async function runJourneySearch(params: SearchParams): Promise<Journey[]>
     maxTransfers: params.maxTransfers,
     stops,
     fares,
-    getAvailabilitySignal: () => noAvailabilityData(), // V1: no snapshot data yet, see DB.md
+    getAvailabilitySignal: getLiveAvailabilitySignal,
   });
 }
 
-function noAvailabilityData(): LegAvailabilitySignal {
-  // Honest "unknown" per PRD non-goals — never fabricate a probability.
-  // Swap this for a real lookup against availability_snapshots once
-  // that table has data (V1.1).
-  return { trainNumber: '', classCode: '', status: null };
+/** Live lookup via RailRadar (see apps/api/src/infrastructure/railradar.ts).
+ * Degrades to the honest "unknown" whenever RAILRADAR_API_KEY is unset or
+ * the call fails — never fabricates a probability (see PRD non-goals). */
+async function getLiveAvailabilitySignal(leg: {
+  trainNumber: string;
+  classCode: string;
+  fromStationCode: string;
+  toStationCode: string;
+  departureDate: Date;
+}): Promise<LegAvailabilitySignal> {
+  const { status, wlNumber } = await fetchSeatAvailability(leg);
+  return { trainNumber: leg.trainNumber, classCode: leg.classCode, status, wlNumber };
 }
 
 // V1: loads the whole schedule graph into memory per request. Fine for
