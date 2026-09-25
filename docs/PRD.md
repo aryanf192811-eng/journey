@@ -61,6 +61,8 @@ books 30–60 days ahead, flexible by a few days.
   be synchronous; move to BullMQ background jobs only if this fails).
 
 ## Open questions to resolve before V1.1
-- What data source backs schedules/fares (manual seed vs. an
-  authorized enquiry API) — determines whether `booking_viability`
-  can be anything beyond "unknown" in V1.
+- ~~What data source backs schedules/fares~~ — resolved 2026-09-25:
+  schedules/fares stay static seed data; live seat availability comes
+  from RailRadar's free-tier API (see CLAUDE.md), so `booking_viability`
+  can now be real when a `RAILRADAR_API_KEY` is configured, and honestly
+  falls back to `"unknown"` when it isn't.
