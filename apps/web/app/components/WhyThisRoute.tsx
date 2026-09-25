@@ -13,14 +13,17 @@ export function WhyThisRoute({ whyThisRoute, cautions }: { whyThisRoute: string[
         ))}
       </ul>
       {cautions.length > 0 && (
-        <ul className="space-y-1.5 pt-2 border-t border-slate-100">
-          {cautions.map((item, i) => (
-            <li key={i} className="text-sm flex gap-2 text-slate-600">
-              <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="pt-2 border-t border-slate-100">
+          <h3 className="font-semibold text-sm text-slate-700 mb-1.5">Cautions</h3>
+          <ul className="space-y-1.5">
+            {cautions.map((item, i) => (
+              <li key={i} className="text-sm flex gap-2 text-slate-600">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
