@@ -109,6 +109,8 @@ CREATE TABLE searches (
   classes           VARCHAR(4)[] NOT NULL,
   max_transfers     SMALLINT NOT NULL DEFAULT 2,
   passengers        SMALLINT NOT NULL DEFAULT 1,
+  expanded_origins       JSONB,  -- see 002_add_expansion_columns.sql — persisted so
+  expanded_destinations  JSONB,  -- GET /api/journeys/search/:searchId survives a refresh
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -142,6 +144,7 @@ $$ LANGUAGE sql IMMUTABLE;
 Usage: `SELECT * FROM stations WHERE haversine_km(lat, lng, :targetLat, :targetLng) <= 100;`
 
 ## Migration files
-`infrastructure/migrations/001_init.sql` contains all of the above in
-applied order. Add `002_*.sql` etc. for future changes — never edit
-001 once it has run anywhere real.
+`infrastructure/migrations/001_init.sql` contains the base schema.
+`002_add_expansion_columns.sql` adds `searches.expanded_origins` /
+`expanded_destinations`. Add `003_*.sql` etc. for future changes —
+never edit an already-applied migration once it has run anywhere real.
