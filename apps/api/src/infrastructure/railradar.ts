@@ -8,6 +8,13 @@
 
 const BASE_URL = 'https://api.railradar.in/v1';
 const CACHE_TTL_MS = 15 * 60 * 1000;
+// A single search can ask about the same leg many times (multiple
+// candidate journeys sharing a train/class/date before Pareto-filtering).
+// Cache failures too, just with a much shorter TTL than successes — this
+// was found by real load testing: uncached failures made search latency
+// scale with candidate count instead of unique-leg count (multi-second
+// searches against the PRD's ~3s target, see docs/PRD.md).
+const FAILURE_CACHE_TTL_MS = 60 * 1000;
 const REQUEST_TIMEOUT_MS = 5000;
 
 export type RawAvailabilityStatus = 'AVAILABLE' | 'RAC' | 'WL' | 'REGRET' | null;
@@ -56,7 +63,10 @@ export async function fetchSeatAvailability(params: {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    if (!res.ok) return { status: null };
+    if (!res.ok) {
+      cache.set(cacheKey, { expiresAt: Date.now() + FAILURE_CACHE_TTL_MS, value: { status: null } });
+      return { status: null };
+    }
 
     const body = (await res.json()) as RailRadarSeatsResponse;
     const day = body.data?.avlDayList.find((d) => d.availablityDate === journeyDate);
@@ -67,7 +77,9 @@ export async function fetchSeatAvailability(params: {
     cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, value: result });
     return result;
   } catch {
-    return { status: null }; // network error, timeout, bad JSON — stay honest, never throw into search
+    // network error, timeout, bad JSON — stay honest, never throw into search
+    cache.set(cacheKey, { expiresAt: Date.now() + FAILURE_CACHE_TTL_MS, value: { status: null } });
+    return { status: null };
   }
 }
 
