@@ -51,7 +51,7 @@ export function SearchForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-5 bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-5 bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StationAutocomplete label="From" value={origin} onChange={setOrigin} />
         <StationAutocomplete label="To" value={destination} onChange={setDestination} />
@@ -59,30 +59,30 @@ export function SearchForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-600 mb-1">Earliest date</label>
-          <input type="date" className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <label className="block text-sm font-medium text-slate-600 mb-1">Earliest date</label>
+          <input type="date" className="w-full rounded border border-slate-300 px-3 py-2" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-600 mb-1">Latest date</label>
-          <input type="date" className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <label className="block text-sm font-medium text-slate-600 mb-1">Latest date</label>
+          <input type="date" className="w-full rounded border border-slate-300 px-3 py-2" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-600 mb-1">Budget max (₹, optional)</label>
-        <input type="number" className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} placeholder="e.g. 2500" />
+        <label className="block text-sm font-medium text-slate-600 mb-1">Budget max (₹, optional)</label>
+        <input type="number" className="w-full rounded border border-slate-300 px-3 py-2" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} placeholder="e.g. 2500" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-600 mb-2">Class</label>
+        <label className="block text-sm font-medium text-slate-600 mb-2">Class</label>
         <div className="flex gap-2 flex-wrap">
           {CLASS_OPTIONS.map((c) => (
             <button
               type="button"
               key={c}
               onClick={() => toggleClass(c)}
-              className={`px-3 py-1.5 rounded-full text-sm border ${
-                classes.includes(c) ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-700'
+              className={`px-3 py-1.5 rounded text-sm border cursor-pointer ${
+                classes.includes(c) ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-300 text-slate-700'
               }`}
             >
               {c}
@@ -93,15 +93,15 @@ export function SearchForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-600 mb-1">Max transfers</label>
+          <label className="block text-sm font-medium text-slate-600 mb-1">Max transfers</label>
           <div className="flex gap-2">
             {[0, 1, 2].map((n) => (
               <button
                 type="button"
                 key={n}
                 onClick={() => setMaxTransfers(n)}
-                className={`flex-1 rounded-lg border py-2 text-sm ${
-                  maxTransfers === n ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300'
+                className={`flex-1 rounded border py-2 text-sm cursor-pointer ${
+                  maxTransfers === n ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-300'
                 }`}
               >
                 {n}
@@ -110,8 +110,8 @@ export function SearchForm() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-600 mb-1">Passengers</label>
-          <input type="number" min={1} className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
+          <label className="block text-sm font-medium text-slate-600 mb-1">Passengers</label>
+          <input type="number" min={1} className="w-full rounded border border-slate-300 px-3 py-2" value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
         </div>
       </div>
 
@@ -120,13 +120,13 @@ export function SearchForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-neutral-900 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
+        className="w-full bg-slate-900 text-white rounded py-2.5 font-medium disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
       >
         {loading ? 'Searching…' : 'Find viable journeys'}
       </button>
 
       {loading && (
-        <p className="text-sm text-neutral-500 text-center" role="status">
+        <p className="text-sm text-slate-500 text-center" role="status">
           Searching across your date range for viable journeys…
         </p>
       )}
