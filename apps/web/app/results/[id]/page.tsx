@@ -1,15 +1,20 @@
 import Link from 'next/link';
 import { fetchSearchResults } from '../../lib/api';
 import { JourneyCard } from '../../components/JourneyCard';
-import { Journey } from '../../lib/types';
+import { ExpansionBanner } from '../../components/ExpansionBanner';
+import { Journey, ExpandedStation } from '../../lib/types';
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   let journeys: Journey[] = [];
+  let expandedOrigins: ExpandedStation[] | undefined;
+  let expandedDestinations: ExpandedStation[] | undefined;
   let loadError: string | null = null;
 
   try {
     const data = await fetchSearchResults(params.id);
     journeys = data.journeys;
+    expandedOrigins = data.expandedOrigins;
+    expandedDestinations = data.expandedDestinations;
   } catch (e: any) {
     loadError = e.message ?? 'Could not load this search.';
   }
@@ -22,6 +27,10 @@ export default async function ResultsPage({ params }: { params: { id: string } }
       </h1>
 
       {loadError && <p className="text-red-600">{loadError}</p>}
+
+      {!loadError && (
+        <ExpansionBanner expandedOrigins={expandedOrigins} expandedDestinations={expandedDestinations} />
+      )}
 
       {!loadError && journeys.length === 0 && (
         <div className="bg-white rounded-2xl border border-neutral-200 p-6 text-center">
