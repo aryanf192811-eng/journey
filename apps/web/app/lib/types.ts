@@ -39,10 +39,15 @@ export interface Journey {
   cautions: string[];
 }
 
+export interface ExpandedStation {
+  stationCode: string;
+  extraTravelMinutes: number;
+}
+
 export interface SearchResponse {
   searchId: number;
   query: { originCode: string; destinationCode: string; dateFrom: string; dateTo: string };
   journeys: Journey[];
-  expandedOrigins?: { stationCode: string; extraTravelMinutes: number }[];
-  expandedDestinations?: { stationCode: string; extraTravelMinutes: number }[];
+  expandedOrigins?: ExpandedStation[];
+  expandedDestinations?: ExpandedStation[];
 }
