@@ -1,8 +1,8 @@
 // apps/api/src/infrastructure/railradar.test.ts
 // parseAvailabilityStatus is pure — no network, no key needed.
 
-import { describe, it, expect } from 'vitest';
-import { parseAvailabilityStatus } from './railradar';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { parseAvailabilityStatus, fetchSeatAvailability } from './railradar';
 
 describe('parseAvailabilityStatus', () => {
   it('parses AVAILABLE', () => {
@@ -23,5 +23,37 @@ describe('parseAvailabilityStatus', () => {
 
   it('falls back to null status for an unrecognized string', () => {
     expect(parseAvailabilityStatus('SOMETHING NEW')).toEqual({ status: null });
+  });
+});
+
+describe('fetchSeatAvailability failure caching', () => {
+  const leg = {
+    trainNumber: '12902',
+    classCode: 'SL',
+    fromStationCode: 'BRC',
+    toStationCode: 'NDLS',
+    departureDate: new Date('2026-11-16T00:00:00Z'),
+  };
+
+  beforeEach(() => {
+    process.env.RAILRADAR_API_KEY = 'test-key';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({}) })
+    );
+  });
+
+  afterEach(() => {
+    delete process.env.RAILRADAR_API_KEY;
+    vi.unstubAllGlobals();
+  });
+
+  it('caches a failed lookup so repeated requests for the same leg do not re-hit the network', async () => {
+    const first = await fetchSeatAvailability(leg);
+    const second = await fetchSeatAvailability(leg);
+
+    expect(first).toEqual({ status: null });
+    expect(second).toEqual({ status: null });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
