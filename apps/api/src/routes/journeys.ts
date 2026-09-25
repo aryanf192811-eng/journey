@@ -19,6 +19,15 @@ interface SearchBody {
   allowDestExpansion?: boolean;
 }
 
+// ponytail: flat assumed last-mile road speed, no maps/traffic API — good
+// enough for "roughly how much extra travel" framing; upgrade to a real
+// maps API if this needs to be precise rather than indicative.
+const ASSUMED_LAST_MILE_SPEED_KMH = 30;
+
+export function computeExtraTravelMinutes(distanceKm: number): number {
+  return Math.round((distanceKm / ASSUMED_LAST_MILE_SPEED_KMH) * 60);
+}
+
 export async function journeyRoutes(app: FastifyInstance) {
   app.post<{ Body: SearchBody }>('/api/journeys/search', async (req, reply) => {
     const body = req.body;
@@ -63,11 +72,17 @@ export async function journeyRoutes(app: FastifyInstance) {
 
     if (journeys.length < 3 && body.allowDestExpansion !== false) {
       const nearby = await nearbyStations(destinationCode);
-      expandedDestinations = nearby.map((s) => ({ stationCode: s.code, extraTravelMinutes: 0 })); // TODO: real last-mile estimate, V1.1
+      expandedDestinations = nearby.map((s) => ({
+        stationCode: s.code,
+        extraTravelMinutes: computeExtraTravelMinutes(s.distanceKm),
+      }));
     }
     if (journeys.length < 3 && body.allowOriginExpansion !== false) {
       const nearby = await nearbyStations(originCode);
-      expandedOrigins = nearby.map((s) => ({ stationCode: s.code, extraTravelMinutes: 0 }));
+      expandedOrigins = nearby.map((s) => ({
+        stationCode: s.code,
+        extraTravelMinutes: computeExtraTravelMinutes(s.distanceKm),
+      }));
     }
 
     const searchRow = await query<{ id: number }>(
