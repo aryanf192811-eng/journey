@@ -37,17 +37,23 @@ export async function resolveStationCode(input: string): Promise<string> {
   return matches[0].code;
 }
 
+export interface NearbyStationRow extends StationRow {
+  distanceKm: number;
+}
+
 /** Stations within radiusKm of a given station, for origin/destination
  * expansion (see PRD "The system should also understand 'nearby'"). */
-export async function nearbyStations(stationCode: string, radiusKm = 100): Promise<StationRow[]> {
-  return query<StationRow>(
-    `SELECT s2.code, s2.name, s2.city, s2.state
+export async function nearbyStations(stationCode: string, radiusKm = 100): Promise<NearbyStationRow[]> {
+  const rows = await query<StationRow & { distance_km: number }>(
+    `SELECT s2.code, s2.name, s2.city, s2.state,
+            haversine_km(s1.lat, s1.lng, s2.lat, s2.lng) AS distance_km
      FROM stations s1
      JOIN stations s2 ON s2.code != s1.code
        AND haversine_km(s1.lat, s1.lng, s2.lat, s2.lng) <= $2
      WHERE s1.code = $1
-     ORDER BY haversine_km(s1.lat, s1.lng, s2.lat, s2.lng) ASC
+     ORDER BY distance_km ASC
      LIMIT 5`,
     [stationCode, radiusKm]
   );
+  return rows.map((r) => ({ ...r, distanceKm: Number(r.distance_km) }));
 }
