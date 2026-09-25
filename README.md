@@ -13,7 +13,10 @@ Read in this order: `docs/PRD.md` → `docs/ARCHITECTURE.md` →
 ## Verified working (this build was tested end-to-end, not just typechecked)
 - `packages/journey-engine` unit tests pass (`npm test`) — proves the
   temporal pathfinder correctly finds safe multi-leg routes and
-  rejects dangerously tight connections.
+  rejects dangerously tight connections, and that Pareto ranking keeps
+  genuine trade-offs while dropping strictly-dominated journeys.
+- `apps/api` unit tests pass (`npm test`) — route validation and the
+  RailRadar status-string parser.
 - Full stack was run live against real Postgres + Fastify + Next.js:
   a Vadodara→Muzaffarpur search with no direct train in budget
   correctly surfaced a 1-transfer route via Delhi with a "Low"
@@ -56,6 +59,19 @@ npm install
 DATABASE_URL="postgres://postgres:postgres@localhost:5432/travel_intelligence" npm run dev
 # → http://localhost:4000
 ```
+
+**Optional — live booking viability via RailRadar:** without this,
+`bookingViability` stays `"unknown"` everywhere (honest default, not a
+bug). To turn it on:
+1. Sign up free at [railradar.in](https://railradar.in) (no credit
+   card) and generate a key in the Developers dashboard — free tier is
+   1,000 requests/month.
+2. Set `RAILRADAR_API_KEY=rr_live_...` in `apps/api`'s environment
+   (e.g. alongside `DATABASE_URL` above, or in `apps/api/.env` — see
+   `.gitignore`, never commit this key).
+Results are cached in-memory for 15 minutes to stay inside the free
+tier. See `apps/api/src/infrastructure/railradar.ts` and `CLAUDE.md`'s
+2026-09-25 decision for why this data source and not another.
 
 ### 4. Web
 ```bash
