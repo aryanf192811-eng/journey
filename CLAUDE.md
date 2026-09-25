@@ -21,6 +21,14 @@ Read `docs/PRD.md` first for product scope, then `docs/ARCHITECTURE.md`,
   data / any authorized data source the user supplies. Do not hardcode
   scraping logic into providers without the user explicitly setting that up
   themselves outside this codebase.
+- **Decision (2026-09-25): live availability/fare data sources through
+  RailRadar** (`api.railradar.in`, free tier 1,000 req/month), consumed as
+  a normal third-party REST API client in `apps/api/src/infrastructure/
+  railradar.ts` — never as a scraper we write or maintain ourselves. This
+  is the one exception to "no live data" in V1's original scope; it does
+  not relax the no-IRCTC-scraping rule itself. Every call degrades to
+  `status: null` ("unknown") on a missing key, timeout, or error — never
+  fabricate a number when RailRadar is unreachable or unconfigured.
 - **No paid infrastructure assumptions.** The user is a student. Every
   service in `infrastructure/docker/docker-compose.yml` must run free,
   self-hosted, on a laptop. Redis is free to self-host (it is NOT a paid
