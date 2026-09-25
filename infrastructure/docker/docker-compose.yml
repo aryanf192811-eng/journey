@@ -1,0 +1,36 @@
+# infrastructure/docker/docker-compose.yml
+# Everything here runs free, self-hosted. Redis is included but
+# optional — see docs/ARCHITECTURE.md; the API works without it in V1.
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: travel_intelligence
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../migrations:/migrations
+      - ../seed:/seed
+      - ./init-db.sh:/docker-entrypoint-initdb.d/00-init.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    profiles: ["with-redis"]   # `docker compose --profile with-redis up` to include it
+
+volumes:
+  pgdata:
