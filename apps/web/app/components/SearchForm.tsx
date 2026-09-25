@@ -124,6 +124,12 @@ export function SearchForm() {
       >
         {loading ? 'Searching…' : 'Find viable journeys'}
       </button>
+
+      {loading && (
+        <p className="text-sm text-neutral-500 text-center" role="status">
+          Searching across your date range for viable journeys…
+        </p>
+      )}
     </form>
   );
 }
