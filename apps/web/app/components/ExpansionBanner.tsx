@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Info, X } from 'lucide-react';
 import { ExpandedStation } from '../lib/types';
 
 // See docs/UI.md: expansion results must be a dismissible banner, never
@@ -25,16 +26,17 @@ export function ExpansionBanner({
     .join(', ');
 
   return (
-    <div className="flex items-start justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-sm text-amber-900">
-      <p>
-        Few strong options from your exact stations. Also worth trying: {list}.
+    <div className="flex items-start justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
+      <p className="flex items-start gap-2">
+        <Info size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+        <span>Few strong options from your exact stations. Also worth trying: {list}.</span>
       </p>
       <button
         onClick={() => setDismissed(true)}
-        className="text-amber-700 hover:text-amber-900 shrink-0"
+        className="text-amber-700 hover:text-amber-900 shrink-0 cursor-pointer"
         aria-label="Dismiss"
       >
-        ✕
+        <X size={16} aria-hidden="true" />
       </button>
     </div>
   );
