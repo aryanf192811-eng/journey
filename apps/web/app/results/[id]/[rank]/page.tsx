@@ -22,11 +22,11 @@ export default async function JourneyDetailPage({ params }: { params: { id: stri
       <Link href={`/results/${params.id}`} className="text-sm text-neutral-500 hover:underline">← Back to results</Link>
 
       <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h1 className="text-2xl font-bold">
+        <div className="flex justify-between items-start gap-2 flex-wrap mb-4">
+          <h1 className="text-2xl font-bold break-words">
             {journey.legs[0].fromStationCode} → {journey.legs[journey.legs.length - 1].toStationCode}
           </h1>
-          <span className="text-2xl font-bold">₹{journey.totalFareEstimate}</span>
+          <span className="text-2xl font-bold shrink-0">₹{journey.totalFareEstimate}</span>
         </div>
         <div className="flex gap-2 flex-wrap mb-4">
           <ViabilityBadge viability={journey.bookingViability} />
