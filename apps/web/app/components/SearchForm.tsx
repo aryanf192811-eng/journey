@@ -1,0 +1,129 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { StationAutocomplete } from './StationAutocomplete';
+import { searchJourneys } from '../lib/api';
+
+const CLASS_OPTIONS = ['SL', '3A', '2A', '1A', 'CC'];
+
+export function SearchForm() {
+  const router = useRouter();
+  const [origin, setOrigin] = useState('');
+  const [destination, setDestination] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [classes, setClasses] = useState<string[]>(['SL', '3A']);
+  const [maxTransfers, setMaxTransfers] = useState(1);
+  const [passengers, setPassengers] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggleClass(c: string) {
+    setClasses((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!origin || !destination || !dateFrom || !dateTo || classes.length === 0) {
+      setError('Please fill in origin, destination, dates, and at least one class.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await searchJourneys({
+        origin,
+        destination,
+        dateFrom,
+        dateTo,
+        budgetMax: budgetMax ? Number(budgetMax) : undefined,
+        classes,
+        maxTransfers,
+        passengers,
+      });
+      router.push(`/results/${result.searchId}`);
+    } catch (err: any) {
+      setError(err.message ?? 'Search failed. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-5 bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <StationAutocomplete label="From" value={origin} onChange={setOrigin} />
+        <StationAutocomplete label="To" value={destination} onChange={setDestination} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-600 mb-1">Earliest date</label>
+          <input type="date" className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-600 mb-1">Latest date</label>
+          <input type="date" className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-600 mb-1">Budget max (₹, optional)</label>
+        <input type="number" className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} placeholder="e.g. 2500" />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-600 mb-2">Class</label>
+        <div className="flex gap-2 flex-wrap">
+          {CLASS_OPTIONS.map((c) => (
+            <button
+              type="button"
+              key={c}
+              onClick={() => toggleClass(c)}
+              className={`px-3 py-1.5 rounded-full text-sm border ${
+                classes.includes(c) ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-700'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-600 mb-1">Max transfers</label>
+          <div className="flex gap-2">
+            {[0, 1, 2].map((n) => (
+              <button
+                type="button"
+                key={n}
+                onClick={() => setMaxTransfers(n)}
+                className={`flex-1 rounded-lg border py-2 text-sm ${
+                  maxTransfers === n ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-600 mb-1">Passengers</label>
+          <input type="number" min={1} className="w-full rounded-lg border border-neutral-300 px-3 py-2" value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-neutral-900 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
+      >
+        {loading ? 'Searching…' : 'Find viable journeys'}
+      </button>
+    </form>
+  );
+}
