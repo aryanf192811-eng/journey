@@ -87,11 +87,12 @@ export async function journeyRoutes(app: FastifyInstance) {
 
     const searchRow = await query<{ id: number }>(
       `INSERT INTO searches
-        (origin_station_id, dest_station_id, date_from, date_to, budget_max, classes, max_transfers, passengers)
+        (origin_station_id, dest_station_id, date_from, date_to, budget_max, classes, max_transfers, passengers,
+         expanded_origins, expanded_destinations)
        VALUES (
         (SELECT id FROM stations WHERE code = $1),
         (SELECT id FROM stations WHERE code = $2),
-        $3, $4, $5, $6, $7, $8)
+        $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
       [
         originCode,
@@ -102,6 +103,8 @@ export async function journeyRoutes(app: FastifyInstance) {
         body.classes,
         maxTransfers,
         body.passengers ?? 1,
+        expandedOrigins ? JSON.stringify(expandedOrigins) : null,
+        expandedDestinations ? JSON.stringify(expandedDestinations) : null,
       ]
     );
     const searchId = searchRow[0].id;
@@ -125,11 +128,21 @@ export async function journeyRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { searchId: string } }>('/api/journeys/search/:searchId', async (req, reply) => {
-    const rows = await query<{ journey_json: any }>(
+    const searchRows = await query<{ expanded_origins: any; expanded_destinations: any }>(
+      `SELECT expanded_origins, expanded_destinations FROM searches WHERE id = $1`,
+      [req.params.searchId]
+    );
+    if (searchRows.length === 0) return reply.code(404).send({ error: 'search not found' });
+
+    const resultRows = await query<{ journey_json: any }>(
       `SELECT journey_json FROM search_results WHERE search_id = $1 ORDER BY rank ASC`,
       [req.params.searchId]
     );
-    if (rows.length === 0) return reply.code(404).send({ error: 'search not found' });
-    return reply.send({ journeys: rows.map((r) => r.journey_json) });
+
+    return reply.send({
+      journeys: resultRows.map((r) => r.journey_json),
+      expandedOrigins: searchRows[0].expanded_origins ?? undefined,
+      expandedDestinations: searchRows[0].expanded_destinations ?? undefined,
+    });
   });
 }
