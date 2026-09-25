@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { GeistSans } from 'geist/font/sans';
 
 export const metadata: Metadata = {
   title: 'Journey Intelligence',
@@ -8,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-neutral-50 text-neutral-900 min-h-screen">{children}</body>
+    <html lang="en" className={GeistSans.variable}>
+      <body className="bg-slate-50 text-slate-900 min-h-screen font-sans">{children}</body>
     </html>
   );
 }
