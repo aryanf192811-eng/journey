@@ -26,28 +26,43 @@ export function SearchForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Guards the write effect below from firing with default (empty) state
+  // before hydration has actually applied saved values. This must be
+  // STATE, not a ref: both effects run in the same flush on mount, so a
+  // ref set synchronously in the read effect would already read as "true"
+  // by the time the write effect checks it in that same pass — while the
+  // setOrigin/setDestination/etc calls from hydration are still just
+  // queued, not yet reflected in this render's closure. Using state means
+  // setHydrated(true) batches with those same updates, so the write effect
+  // only actually runs again once the NEXT render has the restored values.
+  const [hydrated, setHydrated] = useState(false);
+
   // Hydrate from localStorage after mount (not in a lazy useState
   // initializer — that would run during SSR too, where localStorage
   // doesn't exist, and cause a hydration mismatch).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (typeof saved.origin === 'string') setOrigin(saved.origin);
-      if (typeof saved.destination === 'string') setDestination(saved.destination);
-      if (typeof saved.dateFrom === 'string') setDateFrom(saved.dateFrom);
-      if (typeof saved.dateTo === 'string') setDateTo(saved.dateTo);
-      if (typeof saved.budgetMax === 'string') setBudgetMax(saved.budgetMax);
-      if (Array.isArray(saved.classes)) setClasses(saved.classes);
-      if (typeof saved.maxTransfers === 'number') setMaxTransfers(saved.maxTransfers);
-      if (typeof saved.passengers === 'number') setPassengers(saved.passengers);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (typeof saved.origin === 'string') setOrigin(saved.origin);
+        if (typeof saved.destination === 'string') setDestination(saved.destination);
+        if (typeof saved.dateFrom === 'string') setDateFrom(saved.dateFrom);
+        if (typeof saved.dateTo === 'string') setDateTo(saved.dateTo);
+        if (typeof saved.budgetMax === 'string') setBudgetMax(saved.budgetMax);
+        if (Array.isArray(saved.classes)) setClasses(saved.classes);
+        if (typeof saved.maxTransfers === 'number') setMaxTransfers(saved.maxTransfers);
+        if (typeof saved.passengers === 'number') setPassengers(saved.passengers);
+      }
     } catch {
       // private browsing, disabled storage, corrupted value — just skip
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return; // skip until the restored values are actually in scope
     try {
       localStorage.setItem(
         STORAGE_KEY,
@@ -56,7 +71,7 @@ export function SearchForm() {
     } catch {
       // best-effort — a full/blocked storage shouldn't break the form
     }
-  }, [origin, destination, dateFrom, dateTo, budgetMax, classes, maxTransfers, passengers]);
+  }, [hydrated, origin, destination, dateFrom, dateTo, budgetMax, classes, maxTransfers, passengers]);
 
   function toggleClass(c: string) {
     setClasses((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
