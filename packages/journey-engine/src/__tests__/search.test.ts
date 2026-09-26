@@ -68,6 +68,13 @@ describe('searchJourneys', () => {
     expect(comfortable!.connectionBuffers[0].risk).toBe('green');
     expect(comfortable!.whyThisRoute.length).toBeGreaterThan(0);
     expect(comfortable!.bookingViability).toBe('unknown'); // no availability data supplied
+
+    // Each leg carries a booking-window estimate 60 days before its own
+    // departure (IRCTC's current general-quota ARP).
+    const firstLeg = comfortable!.legs[0];
+    const expectedOpen = new Date(firstLeg.departure);
+    expectedOpen.setDate(expectedOpen.getDate() - 60);
+    expect(firstLeg.bookingOpensDate).toBe(expectedOpen.toISOString());
   });
 
   it('respects budget constraint', async () => {
