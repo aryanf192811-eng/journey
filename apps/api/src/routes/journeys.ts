@@ -28,6 +28,15 @@ export function computeExtraTravelMinutes(distanceKm: number): number {
   return Math.round((distanceKm / ASSUMED_LAST_MILE_SPEED_KMH) * 60);
 }
 
+// ponytail: bounded, not exhaustive — re-running the full search per nearby
+// station is real DB + RailRadar cost (see docs/ARCHITECTURE.md). Trying
+// every combination of nearby origins x nearby destinations would be
+// O(n*m) searches; capping each side and only combining as a last resort
+// keeps this from blowing up while still surfacing the "special train
+// between two alternate stations" case neither single-side expansion finds.
+const MAX_NEARBY_STATIONS_TO_SEARCH = 3;
+const MIN_RESULTS_BEFORE_EXPANDING = 3;
+
 export async function journeyRoutes(app: FastifyInstance) {
   app.post<{ Body: SearchBody }>('/api/journeys/search', async (req, reply) => {
     const body = req.body;
@@ -54,7 +63,7 @@ export async function journeyRoutes(app: FastifyInstance) {
     const dateTo = new Date(`${body.dateTo}T00:00:00`);
     const maxTransfers = body.maxTransfers ?? 2;
 
-    const journeys = await runJourneySearch({
+    let journeys = await runJourneySearch({
       originCode,
       destinationCode,
       dateFrom,
@@ -66,23 +75,91 @@ export async function journeyRoutes(app: FastifyInstance) {
 
     // Origin/destination expansion — only run, and only labeled as such,
     // when the direct search came back thin. Never silently substitute
-    // (see PRD "the system should also understand 'nearby'").
+    // (see PRD "the system should also understand 'nearby'"). This
+    // actually re-searches from/to nearby stations (not just suggests
+    // them) so a train that only serves an alternate station — including
+    // one that connects an alternate ORIGIN to an alternate DESTINATION —
+    // gets surfaced, each journey carrying the real extra travel time.
     let expandedDestinations: { stationCode: string; extraTravelMinutes: number }[] | undefined;
     let expandedOrigins: { stationCode: string; extraTravelMinutes: number }[] | undefined;
 
-    if (journeys.length < 3 && body.allowDestExpansion !== false) {
+    if (journeys.length < MIN_RESULTS_BEFORE_EXPANDING && body.allowDestExpansion !== false) {
       const nearby = await nearbyStations(destinationCode);
       expandedDestinations = nearby.map((s) => ({
         stationCode: s.code,
         extraTravelMinutes: computeExtraTravelMinutes(s.distanceKm),
       }));
     }
-    if (journeys.length < 3 && body.allowOriginExpansion !== false) {
+    if (journeys.length < MIN_RESULTS_BEFORE_EXPANDING && body.allowOriginExpansion !== false) {
       const nearby = await nearbyStations(originCode);
       expandedOrigins = nearby.map((s) => ({
         stationCode: s.code,
         extraTravelMinutes: computeExtraTravelMinutes(s.distanceKm),
       }));
+    }
+
+    if (journeys.length < MIN_RESULTS_BEFORE_EXPANDING && (expandedDestinations?.length || expandedOrigins?.length)) {
+      const searchExpansion = async (
+        oCode: string,
+        dCode: string,
+        originExtra: number | undefined,
+        destExtra: number | undefined
+      ) => {
+        const extra = await runJourneySearch({
+          originCode: oCode,
+          destinationCode: dCode,
+          dateFrom,
+          dateTo,
+          budgetMax: body.budgetMax,
+          classes: body.classes,
+          maxTransfers,
+        });
+        for (const j of extra) {
+          if (originExtra !== undefined) {
+            j.isOriginExpansion = true;
+            j.originExtraTravelMinutes = originExtra;
+          }
+          if (destExtra !== undefined) {
+            j.isDestinationExpansion = true;
+            j.destExtraTravelMinutes = destExtra;
+          }
+        }
+        return extra;
+      };
+
+      const sideTasks = [
+        ...(expandedDestinations ?? [])
+          .slice(0, MAX_NEARBY_STATIONS_TO_SEARCH)
+          .map((d) => searchExpansion(originCode, d.stationCode, undefined, d.extraTravelMinutes)),
+        ...(expandedOrigins ?? [])
+          .slice(0, MAX_NEARBY_STATIONS_TO_SEARCH)
+          .map((o) => searchExpansion(o.stationCode, destinationCode, o.extraTravelMinutes, undefined)),
+      ];
+      for (const found of await Promise.all(sideTasks)) journeys.push(...found);
+
+      // Still thin after trying each side independently — a special train
+      // may only connect an alternate origin to an alternate destination
+      // (neither exact endpoint has a direct/short-transfer service).
+      if (journeys.length < MIN_RESULTS_BEFORE_EXPANDING && expandedOrigins?.length && expandedDestinations?.length) {
+        const combined = await searchExpansion(
+          expandedOrigins[0].stationCode,
+          expandedDestinations[0].stationCode,
+          expandedOrigins[0].extraTravelMinutes,
+          expandedDestinations[0].extraTravelMinutes
+        );
+        journeys.push(...combined);
+      }
+
+      // Sort only — do NOT re-run Pareto-filtering across the merged set.
+      // paretoFilter compares fare/duration/transfers/risk as if journeys
+      // were interchangeable, which only holds within one origin/destination
+      // pair; each runJourneySearch call above already Pareto-filtered its
+      // own exact-endpoint results internally. Cross-filtering here would
+      // let a cheaper direct journey to the EXACT destination silently
+      // eliminate a legitimate journey to a nearby alternate destination —
+      // exactly the "never silently substitute" rule this feature exists
+      // to uphold.
+      journeys.sort((a, b) => b.journeyQualityScore - a.journeyQualityScore);
     }
 
     const searchRow = await query<{ id: number }>(
