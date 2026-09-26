@@ -12,6 +12,9 @@ export interface JourneyLeg {
   durationMinutes: number;
   classCode: string;
   fareEstimate: number;
+  /** General-quota IRCTC advance-reservation opening date — informational
+   * only, not an absolute (real ARP has exceptions this doesn't model). */
+  bookingOpensDate: string;
 }
 
 export type ConnectionRisk = 'green' | 'yellow' | 'red';
@@ -37,6 +40,10 @@ export interface Journey {
   bookingViability: BookingViability;
   whyThisRoute: string[];
   cautions: string[];
+  isOriginExpansion?: boolean;
+  isDestinationExpansion?: boolean;
+  originExtraTravelMinutes?: number;
+  destExtraTravelMinutes?: number;
 }
 
 export interface ExpandedStation {
