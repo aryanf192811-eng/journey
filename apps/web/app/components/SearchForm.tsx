@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { StationAutocomplete } from './StationAutocomplete';
 import { searchJourneys } from '../lib/api';
 
 const CLASS_OPTIONS = ['SL', '3A', '2A', '1A', 'CC'];
+
+// Per-viewer convenience only — remembers what you typed across a refresh
+// or an accidental back-navigation. Never used as a source of truth for
+// anything the server needs; wrapped in try/catch since private browsing
+// or disabled storage can throw.
+const STORAGE_KEY = 'journey-search-form';
 
 export function SearchForm() {
   const router = useRouter();
@@ -19,6 +25,38 @@ export function SearchForm() {
   const [passengers, setPassengers] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Hydrate from localStorage after mount (not in a lazy useState
+  // initializer — that would run during SSR too, where localStorage
+  // doesn't exist, and cause a hydration mismatch).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (typeof saved.origin === 'string') setOrigin(saved.origin);
+      if (typeof saved.destination === 'string') setDestination(saved.destination);
+      if (typeof saved.dateFrom === 'string') setDateFrom(saved.dateFrom);
+      if (typeof saved.dateTo === 'string') setDateTo(saved.dateTo);
+      if (typeof saved.budgetMax === 'string') setBudgetMax(saved.budgetMax);
+      if (Array.isArray(saved.classes)) setClasses(saved.classes);
+      if (typeof saved.maxTransfers === 'number') setMaxTransfers(saved.maxTransfers);
+      if (typeof saved.passengers === 'number') setPassengers(saved.passengers);
+    } catch {
+      // private browsing, disabled storage, corrupted value — just skip
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ origin, destination, dateFrom, dateTo, budgetMax, classes, maxTransfers, passengers })
+      );
+    } catch {
+      // best-effort — a full/blocked storage shouldn't break the form
+    }
+  }, [origin, destination, dateFrom, dateTo, budgetMax, classes, maxTransfers, passengers]);
 
   function toggleClass(c: string) {
     setClasses((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
