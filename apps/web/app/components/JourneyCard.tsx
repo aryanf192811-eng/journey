@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Info } from 'lucide-react';
 import { Journey } from '../lib/types';
 import { ViabilityBadge } from './ViabilityBadge';
 import { ConnectionRiskBadge } from './ConnectionRiskBadge';
@@ -17,6 +18,21 @@ function formatDuration(min: number): string {
   return `${h}h ${m}m`;
 }
 
+// See docs/PRD.md "never silently substituted": an expansion journey must
+// always carry this note, never blend in as if it matched the exact search.
+function ExpansionNote({ journey }: { journey: Journey }) {
+  if (!journey.isOriginExpansion && !journey.isDestinationExpansion) return null;
+  const parts: string[] = [];
+  if (journey.isOriginExpansion) parts.push(`~${journey.originExtraTravelMinutes}m extra to reach origin`);
+  if (journey.isDestinationExpansion) parts.push(`~${journey.destExtraTravelMinutes}m extra from destination`);
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded px-2 py-1 mb-2 w-fit">
+      <Info size={12} aria-hidden="true" />
+      <span>Alternate station — {parts.join(', ')}</span>
+    </div>
+  );
+}
+
 export function JourneyCard({ journey, searchId, rank }: { journey: Journey; searchId: string; rank: number }) {
   const route = journey.legs.map((l) => l.fromStationCode).concat(journey.legs[journey.legs.length - 1].toStationCode);
 
@@ -25,6 +41,7 @@ export function JourneyCard({ journey, searchId, rank }: { journey: Journey; sea
       href={`/results/${searchId}/${rank}`}
       className="block bg-white rounded-lg border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
     >
+      <ExpansionNote journey={journey} />
       <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
         <span className="font-semibold text-lg break-words">{route.join(' → ')}</span>
         <span className="text-lg font-semibold shrink-0 tabular-nums">₹{journey.totalFareEstimate}</span>
