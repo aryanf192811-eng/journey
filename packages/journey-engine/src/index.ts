@@ -4,14 +4,14 @@
 
 import { buildTemporalGraph, RawTrainStop, RawFare } from './graph-builder';
 import { findTemporalPaths } from './temporal-pathfinder';
-import { assembleJourney, rankJourneys } from './ranking';
+import { assembleJourney, rankJourneys, populateAvailability } from './ranking';
 import { LegAvailabilitySignal } from './viability';
 import { Journey, SearchConstraints, DEFAULT_CONSTRAINTS } from './types';
 
 export * from './types';
 export { buildTemporalGraph } from './graph-builder';
 export { findTemporalPaths } from './temporal-pathfinder';
-export { rankJourneys, paretoFilter, assembleJourney } from './ranking';
+export { rankJourneys, paretoFilter, assembleJourney, populateAvailability } from './ranking';
 export { estimateViability } from './viability';
 export type { RawTrainStop, RawFare } from './graph-builder';
 export type { LegAvailabilitySignal } from './viability';
@@ -87,22 +87,30 @@ export async function searchJourneys(input: SearchInput): Promise<Journey[]> {
     constraints
   );
 
-  const journeys: Journey[] = [];
+  let journeys: Journey[] = [];
   for (const candidate of candidates) {
-    const signals = await Promise.all(
-      candidate.edges.map((e) =>
-        input.getAvailabilitySignal({
-          trainNumber: e.trainNumber,
-          classCode: e.classCode,
-          fromStationCode: e.fromStationCode,
-          toStationCode: e.toStationCode,
-          departureDate: e.departure,
-        })
-      )
-    );
-    const journey = assembleJourney(candidate, constraints, signals);
+    const journey = assembleJourney(candidate, constraints);
     if (journey) journeys.push(journey);
   }
 
-  return rankJourneys(journeys);
+  journeys = rankJourneys(journeys);
+
+  // Fetch availability signals only for the candidates that survive
+  // Pareto-filtering, to dramatically reduce API consumption (e.g. RailRadar).
+  for (const journey of journeys) {
+    const signals = await Promise.all(
+      journey.legs.map((l) =>
+        input.getAvailabilitySignal({
+          trainNumber: l.trainNumber,
+          classCode: l.classCode,
+          fromStationCode: l.fromStationCode,
+          toStationCode: l.toStationCode,
+          departureDate: new Date(l.departure),
+        })
+      )
+    );
+    populateAvailability(journey, signals, constraints);
+  }
+
+  return journeys;
 }
