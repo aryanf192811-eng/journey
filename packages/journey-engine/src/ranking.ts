@@ -8,6 +8,14 @@ import { buildConnectionBuffers, hasBrokenConnection } from './connection-valida
 import { estimateViability, LegAvailabilitySignal } from './viability';
 import { Journey, JourneyLeg, SearchConstraints } from './types';
 
+const ADVANCE_RESERVATION_PERIOD_DAYS = 60; // IRCTC general quota ARP, changed Nov 2024 (was 120)
+
+function bookingOpensDate(departure: Date): string {
+  const opens = new Date(departure);
+  opens.setDate(opens.getDate() - ADVANCE_RESERVATION_PERIOD_DAYS);
+  return opens.toISOString();
+}
+
 export function assembleJourney(
   candidate: PathCandidate,
   constraints: SearchConstraints,
@@ -26,6 +34,7 @@ export function assembleJourney(
     durationMinutes: Math.round((e.arrival.getTime() - e.departure.getTime()) / 60_000),
     classCode: e.classCode,
     fareEstimate: e.fareEstimate,
+    bookingOpensDate: bookingOpensDate(e.departure),
   }));
 
   const totalFareEstimate = legs.reduce((s, l) => s + l.fareEstimate, 0);
