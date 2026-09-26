@@ -11,7 +11,7 @@ import { Journey, JourneyLeg, SearchConstraints } from './types';
 export function assembleJourney(
   candidate: PathCandidate,
   constraints: SearchConstraints,
-  availabilitySignals: LegAvailabilitySignal[]
+  availabilitySignals: LegAvailabilitySignal[] = []
 ): Journey | null {
   const buffers = buildConnectionBuffers(candidate, constraints);
   if (hasBrokenConnection(buffers)) return null; // rejected before ranking, per PRD pipeline
@@ -41,7 +41,9 @@ export function assembleJourney(
     return order[b.risk] > order[worst] ? b.risk : worst;
   }, 'green');
 
-  const bookingViability = estimateViability(availabilitySignals, worstRisk);
+  const bookingViability = availabilitySignals.length > 0
+    ? estimateViability(availabilitySignals, worstRisk)
+    : 'unknown';
 
   const journeyQualityScore = scoreJourneyQuality(
     totalDurationMinutes,
@@ -72,6 +74,30 @@ export function assembleJourney(
     whyThisRoute,
     cautions,
   };
+}
+
+export function populateAvailability(
+  journey: Journey,
+  signals: LegAvailabilitySignal[],
+  constraints: SearchConstraints
+): void {
+  const worstRisk = journey.connectionBuffers.reduce<'green' | 'yellow' | 'red'>((worst, b) => {
+    const order = { green: 0, yellow: 1, red: 2 };
+    return order[b.risk] > order[worst] ? b.risk : worst;
+  }, 'green');
+
+  journey.bookingViability = estimateViability(signals, worstRisk);
+
+  const { whyThisRoute, cautions } = explain(
+    journey.totalFareEstimate,
+    constraints,
+    journey.transferCount,
+    journey.connectionBuffers,
+    journey.bookingViability
+  );
+
+  journey.whyThisRoute = whyThisRoute;
+  journey.cautions = cautions;
 }
 
 function scoreJourneyQuality(
